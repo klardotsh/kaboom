@@ -1,0 +1,15 @@
+[package]
+name = "kaboom"
+description = "CLI utility to assist in managing Atom feeds, perhaps for DIY blogs"
+version = "0.1.0"
+authors = ["klardotsh <josh@klar.sh>"]
+license = "0BSD"
+edition = "2021"
+homepage = "https://sr.ht/~klardotsh/kaboom"
+repository = "https://git.sr.ht/~klardotsh/kaboom"
+
+[dependencies]
+argh = "0.1"
+atom_syndication = "0.12"
+chrono = "0.4"
+once_cell = "1.18"
