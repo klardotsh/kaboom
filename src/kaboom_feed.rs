@@ -21,6 +21,10 @@ pub trait KaboomFeed {
 }
 
 impl KaboomFeed for Feed {
+    // Clippy incorrectly(?) believes that, for example, **self.title() can
+    // take the place of self.title().to_string(), despite that **str doesn't
+    // have a compile-time-known size.
+    #[allow(clippy::to_string_in_format_args)]
     fn as_human_text(&self) -> String {
         format!(
             "title={}{}\nuri={}\nupdated_at={}{}{}{}",
@@ -29,10 +33,8 @@ impl KaboomFeed for Feed {
                 .map_or("".into(), |st| format!("\nsubtitle={}", st.to_string())),
             self.id(),
             self.updated(),
-            self.icon()
-                .map_or("".into(), |st| format!("\nicon={}", st.to_string())),
-            self.logo()
-                .map_or("".into(), |st| format!("\nlogo={}", st.to_string())),
+            self.icon().map_or("".into(), |st| format!("\nicon={}", st)),
+            self.logo().map_or("".into(), |st| format!("\nlogo={}", st)),
             self.links_as_human_text()
                 .map_or("".into(), |joined| format!("\n{}", joined)),
         )

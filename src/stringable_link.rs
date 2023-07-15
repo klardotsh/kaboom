@@ -33,7 +33,7 @@ impl From<&AtomLink> for StringableLink {
     fn from(it: &AtomLink) -> Self {
         Self {
             link_form: it.clone(),
-            string_form: link_to_string(&it),
+            string_form: link_to_string(it),
         }
     }
 }
@@ -41,7 +41,7 @@ impl From<&AtomLink> for StringableLink {
 impl From<&str> for StringableLink {
     fn from(it: &str) -> Self {
         Self {
-            link_form: string_to_link(&it),
+            link_form: string_to_link(it),
             string_form: String::from(it),
         }
     }
@@ -55,15 +55,15 @@ impl FromStr for StringableLink {
     }
 }
 
-impl Into<AtomLink> for StringableLink {
-    fn into(self) -> AtomLink {
-        self.link_form
+impl From<StringableLink> for AtomLink {
+    fn from(it: StringableLink) -> AtomLink {
+        it.link_form
     }
 }
 
-impl Into<String> for StringableLink {
-    fn into(self) -> String {
-        self.string_form
+impl From<StringableLink> for String {
+    fn from(it: StringableLink) -> String {
+        it.string_form
     }
 }
 
@@ -73,7 +73,7 @@ fn link_to_string(it: &AtomLink) -> String {
         it.href(),
         {
             let rel = it.rel();
-            if rel == "" {
+            if rel.is_empty() {
                 "".into()
             } else {
                 format!("[rel={}]", rel)

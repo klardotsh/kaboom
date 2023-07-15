@@ -19,7 +19,7 @@ mod stringable_link;
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use argh::FromArgs;
 use atom_syndication::Generator as AtomGenerator;
 use env_logger::Env;
@@ -28,9 +28,9 @@ use kaboom_command::KaboomCommand;
 use meta_command::MetaCommand;
 use prune_command::PruneCommand;
 
-const APP_HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
-const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const APP_HOMEPAGE: &str = env!("CARGO_PKG_HOMEPAGE");
+const APP_NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn get_generator_info() -> AtomGenerator {
     AtomGenerator {
