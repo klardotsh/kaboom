@@ -1,18 +1,40 @@
+// Copyright (C) 2023 Josh Klar aka "klardotsh" <josh@klar.sh>
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+// REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+// FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+// INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+// LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+// OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+
+mod stringable_link;
+
+use std::fs::File;
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use argh::FromArgs;
+use atom_syndication::{Feed, Generator as AtomGenerator};
 use chrono::{DateTime, Utc};
-use once_cell::sync::Lazy;
 
+use stringable_link::StringableLink;
+
+const APP_HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
 const APP_NAME: &'static str = env!("CARGO_PKG_NAME");
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-static GENERATOR: Lazy<atom_syndication::Generator> = Lazy::new(|| atom_syndication::Generator {
-    value: APP_NAME.to_string(),
-    uri: Some(env!("CARGO_PKG_HOMEPAGE").to_string()),
-    version: Some(VERSION.to_string()),
-});
+fn get_generator_info() -> AtomGenerator {
+    AtomGenerator {
+        value: APP_NAME.to_string(),
+        uri: Some(APP_HOMEPAGE.into()),
+        version: Some(VERSION.to_string()),
+    }
+}
 
 #[derive(FromArgs, Debug)]
 /// Manage an on-disk Atom feed's entries.
@@ -28,7 +50,7 @@ struct Kaboom {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand)]
 enum KaboomSubCommand {
-    Meta(Meta),
+    Meta(MetaCommand),
     Prune(Prune),
     Version(KaboomVersion),
 }
@@ -45,7 +67,7 @@ struct KaboomVersion {}
 /// metadata will be dumped to standard output (by default in a human-friendly
 /// format, but JSON is optionally provided).
 #[argh(subcommand, name = "meta")]
-struct Meta {
+struct MetaCommand {
     #[argh(option, short = 't')]
     /// a human-readable title for the feed (this must be set the first time
     /// `kaboom meta` is called on a new file)
@@ -58,7 +80,11 @@ struct Meta {
     url: Option<String>,
 
     #[argh(option, short = 'r')]
-    /// a web page URL related to the feed, can be provided multiple times
+    /// a web page URL related to the feed, can be provided multiple times.
+    /// suffixes in the format of [rel=XXX], [type=XXX], [title=XXX], and
+    /// [lang=XXX] are all supported, for example: https://www.meteo.gc.ca/
+    /// rss/marine/06100_f.xml[rel=alternate][lang=fr-ca][type=application/
+    /// atom+xml][title=Détroit de Haro - Météo maritime - Environnement Canada]
     rel_link: Vec<String>,
     #[argh(switch, short = 'R')]
     /// ensure that no links (except rel=self) are set in this feed's metadata
@@ -154,11 +180,47 @@ impl FromStr for PruneStrategy {
 fn main() -> Result<(), String> {
     let args: Kaboom = argh::from_env();
 
-    match args.command {
+    match &args.command {
         KaboomSubCommand::Version(_) => {
             println!("{} {}", APP_NAME, VERSION);
             Ok(())
         }
+
+        KaboomSubCommand::Meta(meta) => do_meta(&args, meta),
+
         _ => Err("Unimplemented command".into()),
     }
+}
+
+fn do_meta(top_args: &Kaboom, args: &MetaCommand) -> Result<(), String> {
+    let file = File::open(&top_args.file).unwrap();
+    let feed = Feed::read_from(BufReader::new(file)).unwrap();
+
+    println!("{}", prettify_feed_meta(&feed));
+
+    Ok(())
+}
+
+fn prettify_feed_meta(feed: &Feed) -> String {
+    format!(
+        "title={}\nurl={}{}",
+        feed.title.to_string(),
+        feed.id,
+        prettify_links_if_present(&feed).map_or("".into(), |joined| format!("\n{}", joined)),
+    )
+}
+
+fn prettify_links_if_present(feed: &Feed) -> Option<String> {
+    let links = feed.links();
+
+    if links.len() == 0 {
+        return None;
+    }
+
+    links
+        .iter()
+        .map(|it| format!("link={}", StringableLink::from_link(it).string_form))
+        .collect::<Vec<String>>()
+        .join("\n")
+        .into()
 }
