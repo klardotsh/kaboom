@@ -16,10 +16,15 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use argh::FromArgs;
+use atom_syndication::{Entry as AtomEntry, Feed};
 use chrono::{DateTime, Utc};
+use log::warn;
 
 use crate::kaboom_command::KaboomCommand;
+use crate::kaboom_feed::KaboomFeed;
 use crate::Kaboom;
+
+type AtomEntries = Vec<AtomEntry>;
 
 #[derive(Eq, Debug, PartialEq)]
 pub enum PruneStrategy {
@@ -41,6 +46,7 @@ impl FromStr for PruneStrategy {
         match it {
             "published" => Ok(Self::RecentlyPublished),
             "updated" => Ok(Self::RecentlyUpdated),
+            "since-date" => Ok(Self::SinceDate),
             _ => Err("unknown pruning strategy"),
         }
     }
@@ -67,7 +73,7 @@ pub struct PruneCommand {
     ///
     /// by default, this will be <feed file> with any .xml extension removed, and
     /// then ".rej.xml" added
-    file: Option<PathBuf>,
+    reject_file: Option<PathBuf>,
 
     #[argh(option, short = 's')]
     /// strategy used in pruning entries from the feed: published, for date
@@ -84,6 +90,49 @@ pub struct PruneCommand {
 
 impl KaboomCommand for PruneCommand {
     fn run(&self, top_args: &Kaboom) -> Result<()> {
+        let mut any_updates = false;
+        let mut feed = Feed::read_from_path(&top_args.file)?;
+
+        if self.count <= feed.entries().len() {
+            warn!("not pruning anything because feed already includes <= target count");
+        } else {
+            let rejected = self.truncate_returning_rejects(&mut feed.entries);
+
+            if !self.no_reject {
+                let mut rej_feed = feed.clone();
+                rej_feed.set_entries(rejected);
+            }
+        }
+
         Ok(())
+    }
+}
+
+impl PruneCommand {
+    /// Sort the entries based on the desired strategy, and retain only as many
+    /// in *entries* as necessary to fulfil criteria (modifying the input Vec
+    /// in-place). Return the remainder as a new Vec.
+    fn truncate_returning_rejects(&self, entries: &mut AtomEntries) -> AtomEntries {
+        match self.strategy {
+            PruneStrategy::RecentlyPublished => {
+                entries.sort_by_key(|it| it.published);
+                entries.split_off(self.count)
+            }
+            PruneStrategy::RecentlyUpdated => {
+                entries.sort_by_key(|it| it.updated);
+                entries.split_off(self.count)
+            }
+            PruneStrategy::SinceDate => {
+                entries.sort_by_key(|it| it.published);
+                let ppoint = entries.partition_point(|e| {
+                    e.published().map_or(false, |pubd| pubd >= &self.since_date)
+                });
+                if ppoint > self.count {
+                    entries.split_off(self.count)
+                } else {
+                    entries.split_off(ppoint)
+                }
+            }
+        }
     }
 }

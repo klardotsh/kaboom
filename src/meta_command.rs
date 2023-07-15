@@ -12,7 +12,6 @@
 // PERFORMANCE OF THIS SOFTWARE.
 
 use std::fs::File;
-use std::io::BufReader;
 
 use anyhow::Result;
 use argh::FromArgs;
