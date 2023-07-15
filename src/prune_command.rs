@@ -62,7 +62,7 @@ pub struct PruneCommand {
     /// described below
     count: usize,
 
-    #[argh(option, short = 'R')]
+    #[argh(option, short = 'R', default = "false")]
     /// skip sending pruned entries to the *reject_file*, described below
     no_reject: bool,
 
@@ -75,14 +75,14 @@ pub struct PruneCommand {
     /// then ".rej.xml" added
     reject_file: Option<PathBuf>,
 
-    #[argh(option, short = 's')]
+    #[argh(option, short = 's', default = "PruneStrategy::default()")]
     /// strategy used in pruning entries from the feed: published, for date
     /// of publication, updated, for date of most recent update, or since-
     /// date, which preserves only those articles authored since *since-date*,
     /// described below
     strategy: PruneStrategy,
 
-    #[argh(option, short = 'd')]
+    #[argh(option, short = 'd', default = "chrono::Utc::now()")]
     /// a date in YYYY-MM-DD format, used only with the since-date *strategy*,
     /// described above
     since_date: DateTime<Utc>,
@@ -90,18 +90,30 @@ pub struct PruneCommand {
 
 impl KaboomCommand for PruneCommand {
     fn run(&self, top_args: &Kaboom) -> Result<()> {
-        let mut any_updates = false;
         let mut feed = Feed::read_from_path(&top_args.file)?;
 
-        if self.count <= feed.entries().len() {
+        if feed.entries().len() <= self.count {
             warn!("not pruning anything because feed already includes <= target count");
         } else {
             let rejected = self.truncate_returning_rejects(&mut feed.entries);
 
-            if !self.no_reject {
+            if self.no_reject {
+                warn!("not writing pruned entries anywhere for backup because no-reject was requested");
+            } else {
                 let mut rej_feed = feed.clone();
                 rej_feed.set_entries(rejected);
+                rej_feed.write_to_path(&self.reject_file.clone().unwrap_or_else(|| {
+                    let mut rej_path = top_args.file.clone();
+
+                    if let Some("xml") = rej_path.extension().map(|e| e.to_str()).flatten() {
+                        rej_path.set_extension("rej.xml");
+                    }
+
+                    rej_path
+                }))?;
             }
+
+            feed.write_to_path(&top_args.file)?;
         }
 
         Ok(())
@@ -116,14 +128,17 @@ impl PruneCommand {
         match self.strategy {
             PruneStrategy::RecentlyPublished => {
                 entries.sort_by_key(|it| it.published);
+                entries.reverse();
                 entries.split_off(self.count)
             }
             PruneStrategy::RecentlyUpdated => {
                 entries.sort_by_key(|it| it.updated);
+                entries.reverse();
                 entries.split_off(self.count)
             }
             PruneStrategy::SinceDate => {
                 entries.sort_by_key(|it| it.published);
+                entries.reverse();
                 let ppoint = entries.partition_point(|e| {
                     e.published().map_or(false, |pubd| pubd >= &self.since_date)
                 });

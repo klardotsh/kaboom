@@ -75,7 +75,7 @@ impl KaboomFeed for Feed {
             if let Some(ext) = path.extension() {
                 new_path.set_extension(format!("{}.kaboom", ext.to_string_lossy()));
             } else {
-                new_path.set_extension(".xml.kaboom");
+                new_path.set_extension("xml.kaboom");
             }
 
             new_path
