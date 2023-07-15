@@ -18,9 +18,12 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use anyhow::{anyhow, Result};
 use argh::FromArgs;
 use atom_syndication::{Feed, Generator as AtomGenerator};
 use chrono::{DateTime, Utc};
+use env_logger::Env;
+use log::{debug, warn};
 
 use stringable_link::StringableLink;
 
@@ -45,6 +48,10 @@ struct Kaboom {
     #[argh(option, short = 'f', default = "PathBuf::from(\"feed.xml\")")]
     /// path to Atom feed
     file: PathBuf,
+
+    #[argh(switch, short = 'n')]
+    /// do not write anything to disk, but still show what *would* change
+    no_op: bool,
 }
 
 #[derive(FromArgs, Debug)]
@@ -74,10 +81,10 @@ struct MetaCommand {
     title: Option<String>,
 
     #[argh(option, short = 'u')]
-    /// a unique and permanent URI for this feed, usually the URL at which it is
+    /// a unique and permanent URI for this feed, often the URL at which it is
     /// accessed (this must be set the first time `kaboom meta` is called on a
     /// new file)
-    url: Option<String>,
+    uri: Option<String>,
 
     #[argh(option, short = 'r')]
     /// a web page URL related to the feed, can be provided multiple times.
@@ -85,7 +92,7 @@ struct MetaCommand {
     /// [lang=XXX] are all supported, for example: https://www.meteo.gc.ca/
     /// rss/marine/06100_f.xml[rel=alternate][lang=fr-ca][type=application/
     /// atom+xml][title=Détroit de Haro - Météo maritime - Environnement Canada]
-    rel_link: Vec<String>,
+    rel_link: Vec<StringableLink>,
     #[argh(switch, short = 'R')]
     /// ensure that no links (except rel=self) are set in this feed's metadata.
     /// if *rel_link* are still provided, this flag will instead clear all
@@ -182,7 +189,9 @@ impl FromStr for PruneStrategy {
     }
 }
 
-fn main() -> Result<(), String> {
+fn main() -> Result<()> {
+    env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
+
     let args: Kaboom = argh::from_env();
 
     match &args.command {
@@ -193,13 +202,131 @@ fn main() -> Result<(), String> {
 
         KaboomSubCommand::Meta(meta) => do_meta(&args, meta),
 
-        _ => Err("Unimplemented command".into()),
+        _ => Err(anyhow!("Unimplemented command")),
     }
 }
 
-fn do_meta(top_args: &Kaboom, args: &MetaCommand) -> Result<(), String> {
-    let file = File::open(&top_args.file).unwrap();
-    let feed = Feed::read_from(BufReader::new(file)).unwrap();
+fn do_meta(top_args: &Kaboom, args: &MetaCommand) -> Result<()> {
+    let mut any_updates = false;
+
+    let mut feed = {
+        let file = File::open(&top_args.file)?;
+        Feed::read_from(BufReader::new(file))?
+    };
+
+    if let Some(title) = &args.title {
+        if title != &feed.title().to_string() {
+            feed.set_title(title.clone());
+            any_updates = true;
+        }
+    }
+
+    if let Some(uri) = &args.uri {
+        if uri != &feed.id().to_string() {
+            feed.set_id(uri.clone());
+            any_updates = true;
+        }
+    }
+
+    if args.remove_subtitle && args.subtitle.is_none() {
+        feed.set_subtitle(None);
+        any_updates = true;
+    }
+
+    if let Some(subtitle) = &args.subtitle {
+        let text_contents = atom_syndication::Text::from(subtitle.as_str());
+        let update_needed = match feed.subtitle() {
+            Some(existing_st) => &text_contents != existing_st,
+            None => true,
+        };
+
+        if update_needed {
+            feed.set_subtitle(Some(text_contents));
+        }
+
+        any_updates = true;
+    }
+
+    if args.remove_icon && args.icon.is_none() {
+        feed.set_icon(None);
+        any_updates = true;
+    }
+
+    if args.icon.is_some() && args.icon != feed.icon().map(|it| it.to_string()) {
+        feed.set_icon(args.icon.clone());
+        any_updates = true;
+    }
+
+    if args.remove_logo && args.logo.is_none() {
+        feed.set_logo(None);
+        any_updates = true;
+    }
+
+    if args.logo.is_some() && args.logo != feed.logo().map(|it| it.to_string()) {
+        feed.set_logo(args.logo.clone());
+        any_updates = true;
+    }
+
+    if args.remove_links {
+        feed.set_links(Vec::with_capacity(args.rel_link.len()));
+        any_updates = true;
+    }
+
+    for rel_link in &args.rel_link {
+        let rl = &rel_link.link_form;
+        if let Some(existing) = feed.links.iter_mut().find(|link| link.href() == rl.href()) {
+            let same = existing == rl;
+            debug!(
+                "link {} aleady exists, {}",
+                &rel_link.string_form,
+                if same {
+                    "seems to be equivalent, skipping!"
+                } else {
+                    "modifying in place"
+                }
+            );
+
+            if !same {
+                existing.set_rel(rl.rel());
+                existing.set_hreflang(rl.hreflang.clone());
+                existing.set_mime_type(rl.mime_type.clone());
+                existing.set_title(rl.title.clone());
+                any_updates = true;
+            }
+        } else {
+            feed.links.push(rl.clone());
+            any_updates = true;
+        }
+    }
+
+    if any_updates {
+        feed.set_updated(chrono::Utc::now());
+    }
+
+    if top_args.no_op {
+        warn!("not writing results to disk because no-op was requested");
+    } else {
+        let temp_path = {
+            let mut path = top_args.file.clone();
+
+            if let Some(ext) = top_args.file.extension() {
+                path.set_extension(format!("{}.kaboom", ext.to_string_lossy()));
+            } else {
+                path.set_extension(".xml.kaboom");
+            }
+
+            path
+        };
+        debug!(
+            "writing results to file {}",
+            temp_path.clone().into_os_string().to_string_lossy()
+        );
+        {
+            let mut file = File::create(&temp_path)?;
+            feed.write_to(&mut file)?;
+            std::fs::rename(&temp_path, &top_args.file)?;
+        }
+    }
 
     println!("{}", prettify_feed_meta(&feed));
 
@@ -208,9 +335,16 @@ fn do_meta(top_args: &Kaboom, args: &MetaCommand) -> Result<(), String> {
 
 fn prettify_feed_meta(feed: &Feed) -> String {
     format!(
-        "title={}\nurl={}{}",
-        feed.title.to_string(),
-        feed.id,
+        "title={}{}\nuri={}\nupdated_at={}{}{}{}",
+        feed.title().to_string(),
+        feed.subtitle()
+            .map_or("".into(), |st| format!("\nsubtitle={}", st.to_string())),
+        feed.id(),
+        feed.updated(),
+        feed.icon()
+            .map_or("".into(), |st| format!("\nicon={}", st.to_string())),
+        feed.logo()
+            .map_or("".into(), |st| format!("\nlogo={}", st.to_string())),
         prettify_links_if_present(&feed).map_or("".into(), |joined| format!("\n{}", joined)),
     )
 }
@@ -218,7 +352,7 @@ fn prettify_feed_meta(feed: &Feed) -> String {
 fn prettify_links_if_present(feed: &Feed) -> Option<String> {
     let links = feed.links();
 
-    if links.len() == 0 {
+    if links.is_empty() {
         return None;
     }
 

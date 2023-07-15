@@ -12,6 +12,7 @@
 // PERFORMANCE OF THIS SOFTWARE.
 
 use std::fmt::Display;
+use std::str::FromStr;
 
 use atom_syndication::Link as AtomLink;
 use log::debug;
@@ -43,6 +44,14 @@ impl From<&str> for StringableLink {
             link_form: string_to_link(&it),
             string_form: String::from(it),
         }
+    }
+}
+
+impl FromStr for StringableLink {
+    type Err = &'static str;
+
+    fn from_str(it: &str) -> Result<Self, Self::Err> {
+        Ok(StringableLink::from(it))
     }
 }
 
