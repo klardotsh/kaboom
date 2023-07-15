@@ -219,7 +219,7 @@ fn prettify_links_if_present(feed: &Feed) -> Option<String> {
 
     links
         .iter()
-        .map(|it| format!("link={}", StringableLink::from_link(it).string_form))
+        .map(|it| format!("link={}", StringableLink::from(it)))
         .collect::<Vec<String>>()
         .join("\n")
         .into()

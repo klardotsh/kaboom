@@ -11,6 +11,8 @@
 // OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 // PERFORMANCE OF THIS SOFTWARE.
 
+use std::fmt::Display;
+
 use atom_syndication::Link as AtomLink;
 use log::debug;
 
@@ -33,6 +35,36 @@ impl StringableLink {
             link_form: string_to_link(&it),
             string_form: String::from(it),
         }
+    }
+}
+
+impl Display for StringableLink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.string_form)
+    }
+}
+
+impl From<&AtomLink> for StringableLink {
+    fn from(it: &AtomLink) -> Self {
+        Self::from_link(it)
+    }
+}
+
+impl From<&str> for StringableLink {
+    fn from(it: &str) -> Self {
+        Self::from_str(it)
+    }
+}
+
+impl Into<AtomLink> for StringableLink {
+    fn into(self) -> AtomLink {
+        self.link_form
+    }
+}
+
+impl Into<String> for StringableLink {
+    fn into(self) -> String {
+        self.string_form
     }
 }
 
