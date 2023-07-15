@@ -87,7 +87,9 @@ struct MetaCommand {
     /// atom+xml][title=Détroit de Haro - Météo maritime - Environnement Canada]
     rel_link: Vec<String>,
     #[argh(switch, short = 'R')]
-    /// ensure that no links (except rel=self) are set in this feed's metadata
+    /// ensure that no links (except rel=self) are set in this feed's metadata.
+    /// if *rel_link* are still provided, this flag will instead clear all
+    /// *existing* links, and add those links as the only links in the metadata.
     remove_links: bool,
 
     #[argh(option, short = 'i')]
@@ -95,7 +97,8 @@ struct MetaCommand {
     /// identification for the feed (think like a favicon)
     icon: Option<String>,
     #[argh(switch, short = 'I')]
-    /// ensure that the icon field is not set in this feed's metadata
+    /// ensure that the icon field is not set in this feed's metadata. ignored
+    /// if *icon* is still provided.
     remove_icon: bool,
 
     #[argh(option, short = 'l')]
@@ -104,7 +107,8 @@ struct MetaCommand {
     /// above!)
     logo: Option<String>,
     #[argh(switch, short = 'L')]
-    /// ensure that the logo field is not set in this feed's metadata
+    /// ensure that the logo field is not set in this feed's metadata. ignored
+    /// if *logo* is still provided.
     remove_logo: bool,
 
     #[argh(option, short = 's')]
@@ -112,7 +116,8 @@ struct MetaCommand {
     /// for the feed
     subtitle: Option<String>,
     #[argh(switch, short = 'S')]
-    /// ensure that the subtitle field is not set in this feed's metadata
+    /// ensure that the subtitle field is not set in this feed's metadata. ignored
+    /// if *subtitle* is still provided.
     remove_subtitle: bool,
 }
 
