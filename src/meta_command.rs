@@ -93,11 +93,7 @@ pub struct MetaCommand {
 impl KaboomCommand for MetaCommand {
     fn run(&self, top_args: &Kaboom) -> Result<()> {
         let mut any_updates = false;
-
-        let mut feed = {
-            let file = File::open(&top_args.file)?;
-            Feed::read_from(BufReader::new(file))?
-        };
+        let mut feed = Feed::read_from_path(&top_args.file)?;
 
         if let Some(title) = &self.title {
             if title != &feed.title().to_string() {

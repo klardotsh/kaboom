@@ -11,6 +11,11 @@
 // OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 // PERFORMANCE OF THIS SOFTWARE.
 
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
+
+use anyhow::Result;
 use atom_syndication::Feed;
 
 use crate::stringable_link::StringableLink;
@@ -18,6 +23,7 @@ use crate::stringable_link::StringableLink;
 pub trait KaboomFeed {
     fn as_human_text(&self) -> String;
     fn links_as_human_text(&self) -> Option<String>;
+    fn read_from_path(path: &Path) -> Result<Feed>;
 }
 
 impl KaboomFeed for Feed {
@@ -53,5 +59,10 @@ impl KaboomFeed for Feed {
             .collect::<Vec<String>>()
             .join("\n")
             .into()
+    }
+
+    fn read_from_path(path: &Path) -> Result<Feed> {
+        let file = File::open(path)?;
+        Ok(Feed::read_from(BufReader::new(file))?)
     }
 }
