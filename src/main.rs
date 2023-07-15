@@ -11,6 +11,7 @@
 // OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 // PERFORMANCE OF THIS SOFTWARE.
 
+mod kaboom_feed;
 mod stringable_link;
 
 use std::fs::File;
@@ -25,6 +26,7 @@ use chrono::{DateTime, Utc};
 use env_logger::Env;
 use log::{debug, warn};
 
+use kaboom_feed::KaboomFeed;
 use stringable_link::StringableLink;
 
 const APP_HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
@@ -328,38 +330,7 @@ fn do_meta(top_args: &Kaboom, args: &MetaCommand) -> Result<()> {
         }
     }
 
-    println!("{}", prettify_feed_meta(&feed));
+    println!("{}", feed.as_human_text());
 
     Ok(())
-}
-
-fn prettify_feed_meta(feed: &Feed) -> String {
-    format!(
-        "title={}{}\nuri={}\nupdated_at={}{}{}{}",
-        feed.title().to_string(),
-        feed.subtitle()
-            .map_or("".into(), |st| format!("\nsubtitle={}", st.to_string())),
-        feed.id(),
-        feed.updated(),
-        feed.icon()
-            .map_or("".into(), |st| format!("\nicon={}", st.to_string())),
-        feed.logo()
-            .map_or("".into(), |st| format!("\nlogo={}", st.to_string())),
-        prettify_links_if_present(&feed).map_or("".into(), |joined| format!("\n{}", joined)),
-    )
-}
-
-fn prettify_links_if_present(feed: &Feed) -> Option<String> {
-    let links = feed.links();
-
-    if links.is_empty() {
-        return None;
-    }
-
-    links
-        .iter()
-        .map(|it| format!("link={}", StringableLink::from(it)))
-        .collect::<Vec<String>>()
-        .join("\n")
-        .into()
 }
