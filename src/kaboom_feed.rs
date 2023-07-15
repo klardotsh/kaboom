@@ -13,10 +13,11 @@
 
 use std::fs::File;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use atom_syndication::Feed;
+use log::debug;
 
 use crate::stringable_link::StringableLink;
 
@@ -24,6 +25,7 @@ pub trait KaboomFeed {
     fn as_human_text(&self) -> String;
     fn links_as_human_text(&self) -> Option<String>;
     fn read_from_path(path: &Path) -> Result<Feed>;
+    fn write_to_path(&self, path: &Path) -> Result<()>;
 }
 
 impl KaboomFeed for Feed {
@@ -64,5 +66,36 @@ impl KaboomFeed for Feed {
     fn read_from_path(path: &Path) -> Result<Feed> {
         let file = File::open(path)?;
         Ok(Feed::read_from(BufReader::new(file))?)
+    }
+
+    fn write_to_path(&self, path: &Path) -> Result<()> {
+        let temp_path = {
+            let mut new_path = PathBuf::from(path);
+
+            if let Some(ext) = path.extension() {
+                new_path.set_extension(format!("{}.kaboom", ext.to_string_lossy()));
+            } else {
+                new_path.set_extension(".xml.kaboom");
+            }
+
+            new_path
+        };
+        let temp_path_cloned = temp_path.clone();
+
+        let mut file = File::create(&temp_path)?;
+        debug!(
+            "writing feed to temp file {}",
+            &temp_path_cloned.to_string_lossy()
+        );
+        self.write_to(&mut file)?;
+
+        debug!(
+            "renaming temp file {} to final path {}",
+            &temp_path_cloned.to_string_lossy(),
+            &path.to_string_lossy(),
+        );
+        std::fs::rename(&temp_path, path)?;
+
+        Ok(())
     }
 }

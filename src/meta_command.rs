@@ -11,8 +11,6 @@
 // OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 // PERFORMANCE OF THIS SOFTWARE.
 
-use std::fs::File;
-
 use anyhow::Result;
 use argh::FromArgs;
 use atom_syndication::{Feed, Generator as AtomGenerator};
@@ -194,26 +192,7 @@ impl KaboomCommand for MetaCommand {
         if top_args.no_op {
             warn!("not writing results to disk because no-op was requested");
         } else {
-            let temp_path = {
-                let mut path = top_args.file.clone();
-
-                if let Some(ext) = top_args.file.extension() {
-                    path.set_extension(format!("{}.kaboom", ext.to_string_lossy()));
-                } else {
-                    path.set_extension(".xml.kaboom");
-                }
-
-                path
-            };
-            debug!(
-                "writing results to file {}",
-                temp_path.clone().into_os_string().to_string_lossy()
-            );
-            {
-                let mut file = File::create(&temp_path)?;
-                feed.write_to(&mut file)?;
-                std::fs::rename(&temp_path, &top_args.file)?;
-            }
+            feed.write_to_path(&top_args.file)?;
         }
 
         println!("{}", feed.as_human_text());
