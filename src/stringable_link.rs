@@ -22,22 +22,6 @@ pub struct StringableLink {
     pub string_form: String,
 }
 
-impl StringableLink {
-    pub fn from_link(it: &AtomLink) -> Self {
-        Self {
-            link_form: it.clone(),
-            string_form: link_to_string(&it),
-        }
-    }
-
-    pub fn from_str(it: &str) -> Self {
-        Self {
-            link_form: string_to_link(&it),
-            string_form: String::from(it),
-        }
-    }
-}
-
 impl Display for StringableLink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.string_form)
@@ -46,13 +30,19 @@ impl Display for StringableLink {
 
 impl From<&AtomLink> for StringableLink {
     fn from(it: &AtomLink) -> Self {
-        Self::from_link(it)
+        Self {
+            link_form: it.clone(),
+            string_form: link_to_string(&it),
+        }
     }
 }
 
 impl From<&str> for StringableLink {
     fn from(it: &str) -> Self {
-        Self::from_str(it)
+        Self {
+            link_form: string_to_link(&it),
+            string_form: String::from(it),
+        }
     }
 }
 
