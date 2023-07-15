@@ -16,7 +16,7 @@ use std::io::BufReader;
 
 use anyhow::Result;
 use argh::FromArgs;
-use atom_syndication::Feed;
+use atom_syndication::{Feed, Generator as AtomGenerator};
 use log::{debug, warn};
 
 use crate::kaboom_command::KaboomCommand;
@@ -83,6 +83,11 @@ pub struct MetaCommand {
     /// ensure that the subtitle field is not set in this feed's metadata. ignored
     /// if *subtitle* is still provided.
     remove_subtitle: bool,
+
+    #[argh(switch, short = 'G')]
+    /// do not insert the generator block into the metadata output (which
+    /// discloses within the feed that kaboom was used to generate it)
+    no_generator: bool,
 }
 
 impl KaboomCommand for MetaCommand {
@@ -181,6 +186,14 @@ impl KaboomCommand for MetaCommand {
 
         if any_updates {
             feed.set_updated(chrono::Utc::now());
+
+            if !self.no_generator {
+                feed.set_generator(AtomGenerator {
+                    value: crate::APP_NAME.to_string(),
+                    uri: Some(crate::APP_HOMEPAGE.into()),
+                    version: Some(crate::VERSION.to_string()),
+                });
+            }
         }
 
         if top_args.no_op {

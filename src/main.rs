@@ -21,24 +21,15 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use argh::FromArgs;
-use atom_syndication::Generator as AtomGenerator;
 use env_logger::Env;
 
 use kaboom_command::KaboomCommand;
 use meta_command::MetaCommand;
 use prune_command::PruneCommand;
 
-const APP_HOMEPAGE: &str = env!("CARGO_PKG_HOMEPAGE");
-const APP_NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-fn get_generator_info() -> AtomGenerator {
-    AtomGenerator {
-        value: APP_NAME.to_string(),
-        uri: Some(APP_HOMEPAGE.into()),
-        version: Some(VERSION.to_string()),
-    }
-}
+pub const APP_HOMEPAGE: &str = env!("CARGO_PKG_HOMEPAGE");
+pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(FromArgs, Debug)]
 /// Manage an on-disk Atom feed's entries.
