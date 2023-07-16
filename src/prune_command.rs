@@ -105,7 +105,7 @@ impl KaboomCommand for PruneCommand {
                 rej_feed.write_to_path(&self.reject_file.clone().unwrap_or_else(|| {
                     let mut rej_path = top_args.file.clone();
 
-                    if let Some("xml") = rej_path.extension().map(|e| e.to_str()).flatten() {
+                    if let Some("xml") = rej_path.extension().and_then(|e| e.to_str()) {
                         rej_path.set_extension("rej.xml");
                     }
 
