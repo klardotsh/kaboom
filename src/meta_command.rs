@@ -26,7 +26,7 @@ use crate::Kaboom;
 /// Arguments provided here will set or modify the metadata. After any modifications
 /// (with no flags, no modifications will be made), the new state of the feed's
 /// metadata will be dumped to standard output (by default in a human-friendly
-/// format, but JSON is optionally provided).
+/// format, but JSON is planned later).
 #[argh(subcommand, name = "meta")]
 pub struct MetaCommand {
     #[argh(option, short = 't')]
