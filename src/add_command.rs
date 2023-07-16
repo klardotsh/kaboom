@@ -64,13 +64,11 @@ pub struct AddCommand {
     author_emails: Vec<String>,
 
     #[argh(option, short = 'd')]
-    /// the date, in YYYY-MM-DD format (or any other valid RFC-3339 string),
-    /// when the entry was published
-    publication_date: Option<DateTime<Utc>>,
+    /// the date and time, in RFC3339 format, when the entry was published
+    published_at: Option<DateTime<Utc>>,
 
     #[argh(option, short = 'D', default = "chrono::Utc::now()")]
-    /// the date, in YYYY-MM-DD format (or any other valid RFC-3339 string),
-    /// when the entry was most recently updated
+    /// the date, in RFC3339 format, when the entry was most recently updated
     updated_at: DateTime<Utc>,
 }
 
@@ -90,7 +88,7 @@ impl KaboomCommand for AddCommand {
         eb.id(&self.id);
         eb.title(self.title.clone());
         eb.summary(self.summary.clone().map(|s| s.into()));
-        eb.published(self.publication_date.map(|p| p.into()));
+        eb.published(self.published_at.map(|p| p.into()));
         eb.updated(self.updated_at);
         eb.content(self.content.clone().map(|s| Content {
             base: None,

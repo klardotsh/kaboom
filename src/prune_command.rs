@@ -83,9 +83,9 @@ pub struct PruneCommand {
     strategy: PruneStrategy,
 
     #[argh(option, short = 'd', default = "chrono::Utc::now()")]
-    /// a date in YYYY-MM-DD format, used only with the since-date *strategy*,
-    /// described above
-    since_date: DateTime<Utc>,
+    /// a date and time, in RFC3339 format, used only with the since-date
+    /// *strategy*, described above
+    since: DateTime<Utc>,
 }
 
 impl KaboomCommand for PruneCommand {
@@ -139,9 +139,8 @@ impl PruneCommand {
             PruneStrategy::SinceDate => {
                 entries.sort_by_key(|it| it.published);
                 entries.reverse();
-                let ppoint = entries.partition_point(|e| {
-                    e.published().map_or(false, |pubd| pubd >= &self.since_date)
-                });
+                let ppoint = entries
+                    .partition_point(|e| e.published().map_or(false, |pubd| pubd >= &self.since));
                 if ppoint > self.count {
                     entries.split_off(self.count)
                 } else {
