@@ -90,7 +90,11 @@ pub struct MetaCommand {
 impl KaboomCommand for MetaCommand {
     fn run(&self, top_args: &Kaboom) -> Result<()> {
         let mut any_updates = false;
-        let mut feed = Feed::read_from_path(&top_args.file)?;
+        let mut feed = Feed::read_from_path(&top_args.file).unwrap_or_else(|_| {
+            let mut ret = Feed::default();
+            ret.set_updated(chrono::Utc::now());
+            ret
+        });
 
         if let Some(title) = &self.title {
             if title != &feed.title().to_string() {
