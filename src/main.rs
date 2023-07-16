@@ -11,6 +11,7 @@
 // OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 // PERFORMANCE OF THIS SOFTWARE.
 
+mod add_command;
 mod kaboom_command;
 mod kaboom_feed;
 mod meta_command;
@@ -23,6 +24,7 @@ use anyhow::Result;
 use argh::FromArgs;
 use env_logger::Env;
 
+use add_command::AddCommand;
 use kaboom_command::KaboomCommand;
 use meta_command::MetaCommand;
 use prune_command::PruneCommand;
@@ -49,6 +51,7 @@ pub struct Kaboom {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand)]
 enum KaboomSubCommand {
+    Add(AddCommand),
     Meta(MetaCommand),
     Prune(PruneCommand),
     Version(KaboomVersion),
@@ -69,6 +72,7 @@ fn main() -> Result<()> {
             println!("{} {}", APP_NAME, VERSION);
             Ok(())
         }
+        KaboomSubCommand::Add(add) => add.run(&args),
         KaboomSubCommand::Meta(meta) => meta.run(&args),
         KaboomSubCommand::Prune(prune) => prune.run(&args),
     }
