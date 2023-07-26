@@ -12,8 +12,8 @@ the basic utilities against
 
 ## Installation
 
-> Void Linux users, a proper package is coming soon once I have some spare time
-> to write the build template for it.
+> Void Linux users, `xbps-install -S kaboom` is all you need to do. I maintain
+> that package, so it should reasonably-always-ish be up to date.
 
 - Make sure you have a working `cargo` (which comes with Rust via your
   distribution or `rustup` or whatever)
